@@ -1,0 +1,220 @@
+#!/usr/bin/perl
+## Made by	db0
+## Contact	db0company@gmail.com
+## Website	http://db0.fr/
+
+die "usage: ".$0." info_file path [--no_cute_boxes]
+
+      where \"info_file\" is a formatted file as the following :
+          1st line is the name of the class,
+          other lines are attributes in it like : \"type tabulation name\"
+          for example : \"int *		timeToLive;\"
+      and \"path\" is the path where the files will be
+          created like ClassName.cpp and ClassName.hpp.
+
+      It creates files using the coplian (or rules of threee) form
+      with constructors, destructor, setters and getters.
+" if (!($#ARGV == 1 || ($#ARGV == 2 && $ARGV[2] eq "--no_cute_boxes")));
+
+my $cute = ($#ARGV == 2 ? 0 : 1);
+
+print "Parsing file...";
+$|++;
+
+open(FILEHANDLER, $ARGV[0]) or die $!;
+
+my $classe = <FILEHANDLER>;
+chomp($classe);
+
+my %vars;
+while (<FILEHANDLER>)
+{
+    chomp;
+    $_ =~ s/^([^\t]+)\t+([^;]+);?//;
+    $vars{$2} = $1;
+}
+
+close(FILEHANDLER);
+
+print " Done.\n";
+
+# Header File
+
+print "Header file in ".$ARGV[1]."/$classe.hpp...";
+$|++;
+
+open(FILEHANDLER, ">".$ARGV[1]."/$classe.hpp") or die $!;
+
+print FILEHANDLER "
+#ifndef\t\t\t".uc($classe)."_H_
+# define\t\t".uc($classe)."_H_
+
+class\t\t\t$classe
+{";
+
+if ($cute)
+{
+    print FILEHANDLER "
+/* ************************************************************************* */
+/*                             Attributes                                    */
+/* ************************************************************************* */";
+}
+print FILEHANDLER "
+ private:\n";
+
+foreach (keys %vars)
+{
+    print FILEHANDLER "  $vars{$_}\t\t\t$_;\n";
+}
+if ($cute)
+{
+    printf FILEHANDLER "
+/* ************************************************************************* */
+/*                             Coplian Form                                  */
+/* ************************************************************************* */";
+}
+
+print FILEHANDLER "
+ public:
+  $classe(void);
+  $classe($classe const &);
+  $classe &\t\toperator=($classe const &);
+  ~$classe(void);
+";
+if ($cute)
+{
+    print FILEHANDLER "
+/* ************************************************************************* */
+/*                             Getters/Setters                               */
+/* ************************************************************************* */";
+}
+print FILEHANDLER "
+ public:
+";
+foreach (keys %vars)
+{
+    printf FILEHANDLER "  $vars{$_} const\t\tget".ucfirst($_)."(void) const;
+  void\t\t\tset".ucfirst($_)."($vars{$_} const &);\n";
+}
+
+if ($cute)
+{
+    print FILEHANDLER "
+/* ************************************************************************* */
+/*                             Member Functions                              */
+/* ************************************************************************* */";
+}
+print FILEHANDLER "
+ public:
+
+};
+\n#endif\t\t\t// !".uc($classe)."_H_\n\n";
+
+close(FILEHANDLER);
+
+print " Done.\n";
+
+# Source File
+
+print "Source file in ".$ARGV[1]."/$classe.cpp...";
+$|++;
+
+open(FILEHANDLER, ">".$ARGV[1]."/$classe.cpp") or die $!;
+
+print FILEHANDLER "
+#include\t\t\"$classe.hpp\"
+";
+if ($cute)
+{
+    print FILEHANDLER "
+/* ************************************************************************* */
+/*                             Coplian Form                                  */
+/* ************************************************************************* */";
+}
+print FILEHANDLER "
+
+".$classe."::$classe(void)
+  : ";
+my $flag = 0;
+foreach (keys %vars)
+{
+    print FILEHANDLER ", " if ($flag);
+    print FILEHANDLER "$_()";
+    $flag = 1;
+}
+print FILEHANDLER "
+{}
+
+".$classe."::$classe($classe const & other)
+    : ";
+my $flag = 0;
+foreach (keys %vars)
+{
+    print FILEHANDLER ", " if ($flag);
+    print FILEHANDLER "$_(other.$_)";
+    $flag = 1;
+}
+print FILEHANDLER "
+{}
+
+$classe &\t\t".$classe."::operator=($classe const & other)
+{
+    if (&other != this)
+    {
+";
+foreach (keys %vars)
+{
+    print FILEHANDLER "      this->$_ = other.$_;\n";
+}
+print FILEHANDLER "
+      // If there is a pointer to something allocated, do this :
+      // if (this->SomeThingAllocated)
+      //   delete this->SomeThingAllocated;
+      // this->SomeThingAllocated = CopyFunc(other.SomeThingAllocated);
+    }
+  return (*this);
+}
+
+".$classe."::~$classe(void)
+{}
+";
+if ($cute)
+{
+    print FILEHANDLER "
+/* ************************************************************************* */
+/*                             Getters/Setters                               */
+/* ************************************************************************* */";
+}
+print FILEHANDLER "
+
+";
+foreach (keys %vars)
+{
+    print FILEHANDLER "$vars{$_} const\t\t".$classe."::get".ucfirst($_)."(void) const
+{
+  return (this->$_);
+}
+
+void\t\t".$classe."::set".ucfirst($_)."($vars{$_} const & $_)
+{
+  this->$_ = $_;
+}
+
+";
+}
+if ($cute)
+{
+    print FILEHANDLER "
+/* ************************************************************************* */
+/*                             Member Functions                              */
+/* ************************************************************************* */";
+}
+print FILEHANDLER "
+
+
+
+";
+
+close(FILEHANDLER);
+
+print " Done.\n";

@@ -1,0 +1,4 @@
+Example
+bool			isThisTheRealLife;
+std::list<std::string>	littleHighLittleLow;
+const Landslide &	noEscapeFromReality;
